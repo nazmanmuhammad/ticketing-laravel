@@ -3,6 +3,48 @@
 @section('page-description', 'Manage your account settings')
 
 <div class="max-w-2xl space-y-6">
+    <!-- Profile Photo -->
+    <div class="bg-white rounded-2xl border border-border p-6">
+        <h3 class="font-bold text-foreground mb-4">Profile Photo</h3>
+        <div class="flex items-center gap-6">
+            <div class="relative">
+                @if(auth()->user()->profile_photo)
+                <img src="{{ Storage::url(auth()->user()->profile_photo) }}" alt="{{ auth()->user()->name }}" class="size-20 rounded-full object-cover border-2 border-border">
+                @else
+                <div class="size-20 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-2xl border-2 border-border">
+                    {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+                </div>
+                @endif
+            </div>
+            <div class="flex-1 space-y-3">
+                <div>
+                    <input wire:model="photo" type="file" accept="image/*" id="photo-upload" class="hidden">
+                    <label for="photo-upload" class="inline-flex items-center gap-2 h-10 px-5 bg-primary hover:bg-primary-hover text-white rounded-xl text-sm font-semibold shadow-md shadow-primary/20 transition-all duration-200 hover:scale-[1.02] active:scale-95 cursor-pointer">
+                        <i data-lucide="camera" class="size-4"></i>
+                        Choose Photo
+                    </label>
+                    @if(auth()->user()->profile_photo)
+                    <button wire:click="removePhoto" class="inline-flex items-center gap-2 h-10 px-4 rounded-xl border border-error text-error text-sm font-semibold hover:bg-error-light transition-all duration-200 cursor-pointer ml-2">
+                        <i data-lucide="trash-2" class="size-4"></i>
+                        Remove
+                    </button>
+                    @endif
+                </div>
+                @if($photo)
+                <div class="flex items-center gap-3">
+                    <img src="{{ $photo->temporaryUrl() }}" class="size-12 rounded-full object-cover border border-border">
+                    <button wire:click="uploadPhoto" class="h-9 px-4 bg-success text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-all duration-200 cursor-pointer flex items-center gap-2">
+                        <svg wire:loading wire:target="uploadPhoto" class="animate-spin size-4" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                        Upload
+                    </button>
+                </div>
+                @endif
+                @error('photo') <p class="text-xs text-error">{{ $message }}</p> @enderror
+                <p class="text-xs text-secondary">JPG, PNG, or GIF. Max 2MB.</p>
+            </div>
+        </div>
+    </div>
+
     <!-- Profile Info -->
     <div class="bg-white rounded-2xl border border-border p-6">
         <h3 class="font-bold text-foreground mb-4">Profile Information</h3>

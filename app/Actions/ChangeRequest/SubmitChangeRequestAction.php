@@ -11,9 +11,9 @@ use Illuminate\Support\Facades\DB;
 
 class SubmitChangeRequestAction
 {
-    public function execute(array $data, array $attachments = []): ChangeRequest
+    public function execute(array $data, array $attachments = [], array $perRequestApprovers = []): ChangeRequest
     {
-        return DB::transaction(function () use ($data, $attachments) {
+        return DB::transaction(function () use ($data, $attachments, $perRequestApprovers) {
             $data['request_number'] = ChangeRequest::generateNumber();
             $data['status'] = 'submitted';
 
@@ -35,7 +35,17 @@ class SubmitChangeRequestAction
                 'description' => 'Change request submitted',
             ]);
 
-            if ($data['change_type'] === 'standard') {
+            if (!empty($perRequestApprovers)) {
+                $cr->update(['status' => 'under_review']);
+                foreach ($perRequestApprovers as $approver) {
+                    ChangeRequestApproval::create([
+                        'change_request_id' => $cr->id,
+                        'approver_id' => $approver['user_id'],
+                        'level' => $approver['level'],
+                        'status' => 'pending',
+                    ]);
+                }
+            } elseif ($data['change_type'] === 'standard') {
                 $cr->update(['status' => 'approved']);
             } else {
                 $cr->update(['status' => 'under_review']);

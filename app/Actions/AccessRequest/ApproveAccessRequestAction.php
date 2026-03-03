@@ -5,6 +5,8 @@ namespace App\Actions\AccessRequest;
 use App\Models\AccessRequest;
 use App\Models\AccessRequestApproval;
 use App\Models\User;
+use App\Mail\ApprovalRequestMail;
+use Illuminate\Support\Facades\Mail;
 
 class ApproveAccessRequestAction
 {
@@ -40,19 +42,42 @@ class ApproveAccessRequestAction
         ]);
 
         if ($action === 'approved') {
-            $nextLevel = $request->approvals()
-                ->where('level', '>', $approval->level)
+            $pendingAtSameOrLower = $request->approvals()
+                ->where('level', '<=', $approval->level)
                 ->where('status', 'pending')
-                ->first();
-            if ($nextLevel) {
-                $request->update(['current_approval_level' => $nextLevel->level]);
-            } else {
-                $request->update(['status' => 'approved']);
+                ->count();
+
+            if ($pendingAtSameOrLower === 0) {
+                $nextLevelApprovals = $request->approvals()
+                    ->where('level', '>', $approval->level)
+                    ->where('status', 'pending')
+                    ->get();
+
+                if ($nextLevelApprovals->isEmpty()) {
+                    $request->update(['status' => 'approved']);
+                } else {
+                    $nextMinLevel = $nextLevelApprovals->min('level');
+                    $request->update(['current_approval_level' => $nextMinLevel]);
+                    $nextLevelOnly = $nextLevelApprovals->where('level', $nextMinLevel);
+                    foreach ($nextLevelOnly as $nextApproval) {
+                        $nextApproval->load('approver');
+                        if ($nextApproval->approver) {
+                            try {
+                                Mail::to($nextApproval->approver->email)->send(new ApprovalRequestMail(
+                                    $request, 'access_request', $nextApproval->approver->name, $nextMinLevel,
+                                    route('access-requests.show', $request)
+                                ));
+                            } catch (\Throwable $e) {
+                                \Log::warning('Failed to send access request approval email: ' . $e->getMessage());
+                            }
+                        }
+                    }
+                }
             }
         } elseif ($action === 'rejected') {
             $request->update(['status' => 'rejected']);
         } elseif ($action === 'info_requested') {
-            $request->update(['status' => 'pending_approval']);
+            $request->update(['status' => 'info_requested']);
         }
 
         return $request->fresh();

@@ -27,40 +27,53 @@ class TaskList extends Component
         $userId = $user->id;
         $teamIds = $user->teams()->pluck('teams.id')->toArray();
 
-        // Tickets assigned to me or my teams
+        // Tickets assigned to me or my teams, or pending my approval at current level
         $assignedTickets = collect();
         if ($user->can('tickets.assign') || $user->can('tickets.view')) {
             $assignedTickets = Ticket::with(['requester', 'category'])
-                ->whereNotIn('status', ['resolved', 'closed'])
+                ->whereNotIn('status', ['resolved', 'closed', 'rejected'])
                 ->where(function ($q) use ($userId, $teamIds) {
                     $q->where('assigned_to', $userId);
                     if (!empty($teamIds)) {
                         $q->orWhereIn('assigned_team_id', $teamIds);
                     }
+                    // Include tickets pending my approval at current minimum level only
+                    $q->orWhere(function ($subQ) use ($userId) {
+                        $subQ->where('status', 'pending_approval')
+                            ->whereHas('approvals', function ($approvalQ) use ($userId) {
+                                $approvalQ->where('approver_id', $userId)
+                                    ->where('status', 'pending')
+                                    ->whereRaw('level = (SELECT MIN(level) FROM ticket_approvals WHERE ticket_id = tickets.id AND status = "pending")');
+                            });
+                    });
                 })
                 ->orderByDesc('created_at')
                 ->get();
         }
 
-        // Access requests pending my approval
+        // Access requests pending my approval at current level only
         $pendingAccessApprovals = collect();
         if ($user->can('access_requests.approve')) {
             $pendingAccessApprovals = AccessRequest::with(['requester', 'system'])
                 ->where('status', 'pending_approval')
                 ->whereHas('approvals', function ($q) use ($userId) {
-                    $q->where('approver_id', $userId)->where('status', 'pending');
+                    $q->where('approver_id', $userId)
+                        ->where('status', 'pending')
+                        ->whereRaw('level = (SELECT MIN(level) FROM access_request_approvals WHERE access_request_id = access_requests.id AND status = "pending")');
                 })
                 ->orderByDesc('created_at')
                 ->get();
         }
 
-        // Change requests pending my approval
+        // Change requests pending my approval at current level only
         $pendingChangeApprovals = collect();
         if ($user->can('change_requests.approve')) {
             $pendingChangeApprovals = ChangeRequest::with(['requester', 'system'])
                 ->whereIn('status', ['under_review', 'submitted'])
                 ->whereHas('approvals', function ($q) use ($userId) {
-                    $q->where('approver_id', $userId)->where('status', 'pending');
+                    $q->where('approver_id', $userId)
+                        ->where('status', 'pending')
+                        ->whereRaw('level = (SELECT MIN(level) FROM change_request_approvals WHERE change_request_id = change_requests.id AND status = "pending")');
                 })
                 ->orderByDesc('created_at')
                 ->get();

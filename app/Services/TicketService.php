@@ -48,20 +48,21 @@ class TicketService
         return $ticket;
     }
 
-    public function addComment(Ticket $ticket, int $userId, string $body, bool $isInternal = false): TicketComment
+    public function addComment(Ticket $ticket, int $userId, string $body, bool $isInternal = false, ?int $parentId = null): TicketComment
     {
         $comment = TicketComment::create([
             'ticket_id' => $ticket->id,
             'user_id' => $userId,
             'body' => $body,
             'is_internal' => $isInternal,
+            'parent_id' => $parentId,
         ]);
 
         TicketActivity::create([
             'ticket_id' => $ticket->id,
             'user_id' => $userId,
             'action' => $isInternal ? 'internal_note' : 'replied',
-            'description' => $isInternal ? 'Added internal note' : 'Added public reply',
+            'description' => $isInternal ? 'Added internal note' : ($parentId ? 'Replied to a comment' : 'Added public reply'),
         ]);
 
         return $comment;

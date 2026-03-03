@@ -8,7 +8,12 @@ use Livewire\WithFileUploads;
 use App\Models\Category;
 use App\Models\User;
 use App\Models\Team;
+use App\Models\TicketApproval;
+use App\Models\TicketActivity;
 use App\Actions\Ticket\CreateTicketAction;
+use App\Mail\TicketCreatedMail;
+use App\Mail\ApprovalRequestMail;
+use Illuminate\Support\Facades\Mail;
 
 #[Layout('layouts.master')]
 class TicketCreate extends Component
@@ -24,6 +29,10 @@ class TicketCreate extends Component
     public ?int $assigned_to = null;
     public ?int $assigned_team_id = null;
     public array $attachments = [];
+    public bool $resolve_immediately = false;
+    public string $resolution_notes = '';
+    public string $needs_approval = 'no';
+    public array $approvers = [];
 
     protected function rules(): array
     {
@@ -57,9 +66,36 @@ class TicketCreate extends Component
         $this->attachments = array_values($this->attachments);
     }
 
+    public function updatedNeedsApproval(): void
+    {
+        if ($this->needs_approval === 'no') {
+            $this->approvers = [];
+        } elseif (empty($this->approvers)) {
+            $this->approvers = [['user_id' => '', 'level' => 1]];
+        }
+    }
+
+    public function addApprover(): void
+    {
+        $maxLevel = !empty($this->approvers) ? max(array_column($this->approvers, 'level')) : 0;
+        $this->approvers[] = ['user_id' => '', 'level' => $maxLevel + 1];
+    }
+
+    public function removeApprover(int $index): void
+    {
+        unset($this->approvers[$index]);
+        $this->approvers = array_values($this->approvers);
+    }
+
     public function save()
     {
-        $this->validate();
+        $rules = $this->rules();
+        if ($this->needs_approval === 'yes') {
+            $rules['approvers'] = 'required|array|min:1';
+            $rules['approvers.*.user_id'] = 'required|exists:users,id';
+            $rules['approvers.*.level'] = 'required|integer|min:1';
+        }
+        $this->validate($rules);
 
         $data = [
             'title' => $this->title,
@@ -80,7 +116,63 @@ class TicketCreate extends Component
         $action = app(CreateTicketAction::class);
         $ticket = $action->execute($data, $this->attachments);
 
-        $this->dispatch('toast', type: 'success', message: 'Ticket created: ' . $ticket->ticket_number);
+        if ($this->needs_approval === 'yes' && !empty($this->approvers)) {
+            foreach ($this->approvers as $approver) {
+                TicketApproval::create([
+                    'ticket_id' => $ticket->id,
+                    'approver_id' => $approver['user_id'],
+                    'level' => $approver['level'],
+                    'status' => 'pending',
+                ]);
+            }
+            $ticket->update(['status' => 'pending_approval']);
+            TicketActivity::create([
+                'ticket_id' => $ticket->id,
+                'user_id' => auth()->id(),
+                'action' => 'approval_requested',
+                'description' => 'Internal approval requested (' . count($this->approvers) . ' approver(s))',
+            ]);
+        }
+
+        // Send ticket created email to requester
+        try {
+            Mail::to($ticket->requester->email)->send(new TicketCreatedMail($ticket));
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to send ticket created email: ' . $e->getMessage());
+        }
+
+        // Send approval email to level 1 approvers only
+        if ($this->needs_approval === 'yes' && !empty($this->approvers)) {
+            $minLevel = min(array_column($this->approvers, 'level'));
+            $level1Approvers = array_filter($this->approvers, fn($a) => (int)$a['level'] === $minLevel);
+            foreach ($level1Approvers as $approver) {
+                $approverUser = User::find($approver['user_id']);
+                if ($approverUser) {
+                    try {
+                        Mail::to($approverUser->email)->send(new ApprovalRequestMail(
+                            $ticket, 'ticket', $approverUser->name, $minLevel,
+                            route('tickets.show', $ticket)
+                        ));
+                    } catch (\Throwable $e) {
+                        \Log::warning('Failed to send approval email: ' . $e->getMessage());
+                    }
+                }
+            }
+        }
+
+        if ($this->resolve_immediately) {
+            $ticket->update(['status' => 'closed', 'closed_at' => now()]);
+            \App\Models\TicketActivity::create([
+                'ticket_id' => $ticket->id,
+                'user_id' => auth()->id(),
+                'action' => 'closed',
+                'description' => 'Resolved immediately upon creation' . ($this->resolution_notes ? ': ' . $this->resolution_notes : ''),
+            ]);
+            $this->dispatch('toast', type: 'success', message: 'Ticket created & closed: ' . $ticket->ticket_number);
+        } else {
+            $this->dispatch('toast', type: 'success', message: 'Ticket created: ' . $ticket->ticket_number);
+        }
+
         return redirect()->route('tickets.show', $ticket);
     }
 

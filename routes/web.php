@@ -29,7 +29,17 @@ use App\Livewire\Settings\WorkflowSettings;
 use App\Livewire\Settings\CannedResponseSettings;
 use App\Livewire\Task\TaskList;
 use App\Livewire\Settings\TeamSettings;
+use App\Livewire\Settings\EmailSettings;
+use App\Livewire\Settings\GeneralSettings;
 use App\Http\Controllers\AuthController;
+
+// Landing page
+Route::get('/', function () {
+    if (auth()->check()) {
+        return redirect()->route('dashboard');
+    }
+    return view('landing');
+})->name('landing');
 
 // Guest routes
 Route::middleware('guest')->group(function () {
@@ -43,7 +53,6 @@ Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->n
 
 // Authenticated routes
 Route::middleware('auth')->group(function () {
-    Route::get('/', fn () => redirect()->route('dashboard'));
 
     Route::get('/dashboard', Dashboard::class)->name('dashboard');
     Route::get('/profile', UserProfile::class)->name('profile');
@@ -63,6 +72,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/', AccessRequestList::class)->name('access-requests.index')->middleware('can:access_requests.view');
         Route::get('/create', AccessRequestCreate::class)->name('access-requests.create')->middleware('can:access_requests.create');
         Route::get('/pending', AccessPendingApprovals::class)->name('access-requests.pending')->middleware('can:access_requests.approve');
+        Route::get('/{accessRequest}/edit', AccessRequestCreate::class)->name('access-requests.edit')->middleware('can:access_requests.create');
         Route::get('/{accessRequest}', AccessRequestDetail::class)->name('access-requests.show')->middleware('can:access_requests.view');
     });
 
@@ -71,6 +81,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/', ChangeRequestList::class)->name('change-requests.index')->middleware('can:change_requests.view');
         Route::get('/create', ChangeRequestCreate::class)->name('change-requests.create')->middleware('can:change_requests.create');
         Route::get('/calendar', ChangeCalendar::class)->name('change-requests.calendar')->middleware('can:change_requests.view');
+        Route::get('/{changeRequest}/edit', ChangeRequestCreate::class)->name('change-requests.edit')->middleware('can:change_requests.create');
         Route::get('/{changeRequest}', ChangeRequestDetail::class)->name('change-requests.show')->middleware('can:change_requests.view');
     });
 
@@ -104,5 +115,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/workflows', WorkflowSettings::class)->name('settings.workflows');
         Route::get('/canned-responses', CannedResponseSettings::class)->name('settings.canned-responses');
         Route::get('/teams', TeamSettings::class)->name('settings.teams');
+        Route::get('/email', EmailSettings::class)->name('settings.email');
+        Route::get('/general', GeneralSettings::class)->name('settings.general');
     });
 });

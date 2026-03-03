@@ -74,6 +74,11 @@ class ChangeRequest extends Model
         return $this->hasMany(ChangeRequestAttachment::class);
     }
 
+    public function comments()
+    {
+        return $this->hasMany(ChangeRequestComment::class)->orderBy('created_at', 'asc');
+    }
+
     public function activities()
     {
         return $this->hasMany(ChangeRequestActivity::class)->orderBy('created_at', 'desc');

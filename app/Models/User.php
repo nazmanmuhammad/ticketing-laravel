@@ -20,6 +20,7 @@ class User extends Authenticatable
         'password',
         'department',
         'phone',
+        'profile_photo',
         'team_id',
     ];
 

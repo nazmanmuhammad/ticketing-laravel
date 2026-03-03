@@ -57,18 +57,38 @@
 @section('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+let reportTrendChart = null;
+let reportDistChart = null;
+
+function initReportCharts() {
+    if (reportTrendChart) {
+        reportTrendChart.destroy();
+        reportTrendChart = null;
+    }
+    if (reportDistChart) {
+        reportDistChart.destroy();
+        reportDistChart = null;
+    }
+
+    const trendCanvas = document.getElementById('trendChart');
+    const distCanvas = document.getElementById('distributionChart');
+    
+    if (!trendCanvas || !distCanvas) return;
+
     const trendData = @json($trend);
-    new Chart(document.getElementById('trendChart'), {
+    reportTrendChart = new Chart(trendCanvas, {
         type: 'line', data: { labels: trendData.map(d => d.date), datasets: [{ label: 'Tickets', data: trendData.map(d => d.count), borderColor: '#165DFF', backgroundColor: 'rgba(22,93,255,0.1)', fill: true, tension: 0.4, pointRadius: 0 }] },
         options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
     });
     const distData = @json($groupedData);
     const colors = ['#165DFF','#30B22D','#F59E0B','#ED6B60','#8B5CF6','#06B6D4','#EC4899','#F97316'];
-    new Chart(document.getElementById('distributionChart'), {
+    reportDistChart = new Chart(distCanvas, {
         type: 'bar', data: { labels: Object.keys(distData).map(k => k.replace('_',' ')), datasets: [{ data: Object.values(distData), backgroundColor: colors.slice(0, Object.keys(distData).length) }] },
         options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
     });
-});
+}
+
+document.addEventListener('DOMContentLoaded', initReportCharts);
+document.addEventListener('livewire:navigated', initReportCharts);
 </script>
 @endsection

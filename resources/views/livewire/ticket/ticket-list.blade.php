@@ -39,11 +39,6 @@
         @endcan
     </div>
 
-    <!-- Loading -->
-    <div wire:loading.delay class="mb-4">
-        <div class="h-1 w-full bg-muted rounded-full overflow-hidden"><div class="h-full bg-primary rounded-full animate-pulse" style="width:60%"></div></div>
-    </div>
-
     <!-- Table -->
     <div class="bg-white rounded-2xl border border-border overflow-hidden">
         <div class="overflow-x-auto">
@@ -62,7 +57,7 @@
                         <th wire:click="sortBy('created_at')" class="px-4 py-3 text-left font-semibold text-secondary cursor-pointer hover:text-foreground transition-colors duration-150">Created</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody wire:loading.remove>
                     @forelse($tickets as $ticket)
                     <tr class="border-b border-border hover:bg-muted/30 transition-colors duration-150 cursor-pointer" onclick="window.location='{{ route('tickets.show', $ticket) }}'">
                         <td class="px-4 py-3 font-mono text-xs font-semibold text-primary">{{ $ticket->ticket_number }}</td>
@@ -104,6 +99,20 @@
                         </td>
                     </tr>
                     @endforelse
+                </tbody>
+                <tbody wire:loading>
+                    @for($i = 0; $i < 6; $i++)
+                    <tr class="border-b border-border">
+                        <td class="px-4 py-3.5"><div class="h-4 bg-muted rounded w-20 animate-pulse"></div></td>
+                        <td class="px-4 py-3.5"><div class="space-y-1.5 animate-pulse"><div class="h-4 bg-muted rounded w-44"></div><div class="h-3 bg-muted rounded w-24"></div></div></td>
+                        <td class="px-4 py-3.5"><div class="h-4 bg-muted rounded w-24 animate-pulse"></div></td>
+                        <td class="px-4 py-3.5"><div class="h-6 bg-muted rounded-lg w-16 animate-pulse"></div></td>
+                        <td class="px-4 py-3.5"><div class="h-6 bg-muted rounded-lg w-20 animate-pulse"></div></td>
+                        <td class="px-4 py-3.5"><div class="h-4 bg-muted rounded w-24 animate-pulse"></div></td>
+                        <td class="px-4 py-3.5"><div class="h-2 bg-muted rounded-full w-16 animate-pulse"></div></td>
+                        <td class="px-4 py-3.5"><div class="h-4 bg-muted rounded w-20 animate-pulse"></div></td>
+                    </tr>
+                    @endfor
                 </tbody>
             </table>
         </div>

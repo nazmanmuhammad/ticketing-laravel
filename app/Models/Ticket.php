@@ -73,6 +73,11 @@ class Ticket extends Model
         return $this->hasMany(TicketAttachment::class);
     }
 
+    public function approvals()
+    {
+        return $this->hasMany(TicketApproval::class)->orderBy('level');
+    }
+
     public function activities()
     {
         return $this->hasMany(TicketActivity::class)->orderBy('created_at', 'desc');

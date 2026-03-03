@@ -68,6 +68,16 @@ class AccessRequest extends Model
         return $this->belongsTo(Team::class, 'assigned_team_id');
     }
 
+    public function comments()
+    {
+        return $this->hasMany(AccessRequestComment::class)->orderBy('created_at', 'asc');
+    }
+
+    public function activities()
+    {
+        return $this->hasMany(AccessRequestActivity::class)->orderByDesc('created_at');
+    }
+
     public function currentApproval()
     {
         return $this->hasOne(AccessRequestApproval::class)

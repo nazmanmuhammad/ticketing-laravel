@@ -4,11 +4,16 @@ namespace App\Livewire\User;
 
 use Livewire\Component;
 use Livewire\Attributes\Layout;
+use Livewire\WithFileUploads;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 #[Layout('layouts.master')]
 class UserProfile extends Component
 {
+    use WithFileUploads;
+
+    public $photo;
     public string $name = '';
     public string $email = '';
     public string $phone = '';
@@ -24,6 +29,34 @@ class UserProfile extends Component
         $this->email = $user->email;
         $this->phone = $user->phone ?? '';
         $this->department = $user->department ?? '';
+    }
+
+    public function uploadPhoto(): void
+    {
+        $this->validate(['photo' => 'required|image|max:2048']);
+
+        $user = auth()->user();
+
+        // Delete old photo
+        if ($user->profile_photo) {
+            Storage::disk('public')->delete($user->profile_photo);
+        }
+
+        $path = $this->photo->store('profile-photos', 'public');
+        $user->update(['profile_photo' => $path]);
+        $this->photo = null;
+
+        $this->dispatch('toast', type: 'success', message: 'Profile photo updated');
+    }
+
+    public function removePhoto(): void
+    {
+        $user = auth()->user();
+        if ($user->profile_photo) {
+            Storage::disk('public')->delete($user->profile_photo);
+            $user->update(['profile_photo' => null]);
+        }
+        $this->dispatch('toast', type: 'success', message: 'Profile photo removed');
     }
 
     public function updateProfile(): void

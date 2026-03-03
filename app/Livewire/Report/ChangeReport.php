@@ -21,8 +21,8 @@ class ChangeReport extends Component
     public function render()
     {
         $query = ChangeRequest::query()
-            ->when($this->dateFrom, fn ($q) => $q->whereDate('created_at', '>=', $this->dateFrom))
-            ->when($this->dateTo, fn ($q) => $q->whereDate('created_at', '<=', $this->dateTo));
+            ->when($this->dateFrom, fn ($q) => $q->whereDate('change_requests.created_at', '>=', $this->dateFrom))
+            ->when($this->dateTo, fn ($q) => $q->whereDate('change_requests.created_at', '<=', $this->dateTo));
 
         $byStatus = (clone $query)->selectRaw('status as label, count(*) as total')->groupBy('status')->pluck('total', 'label')->toArray();
         $byType = (clone $query)->selectRaw('change_type as label, count(*) as total')->groupBy('change_type')->pluck('total', 'label')->toArray();

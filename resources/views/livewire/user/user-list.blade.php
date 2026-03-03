@@ -24,8 +24,6 @@
         @endcan
     </div>
 
-    <div wire:loading.delay class="mb-4"><div class="h-1 w-full bg-muted rounded-full overflow-hidden"><div class="h-full bg-primary rounded-full animate-pulse" style="width:60%"></div></div></div>
-
     <div class="bg-white rounded-2xl border border-border overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
@@ -39,7 +37,7 @@
                         <th class="px-4 py-3 text-left font-semibold text-secondary">Actions</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody wire:loading.remove>
                     @forelse($users as $user)
                     <tr class="border-b border-border hover:bg-muted/30 transition-colors duration-150">
                         <td class="px-4 py-3">
@@ -78,6 +76,18 @@
                     @empty
                     <tr><td colspan="6" class="px-4 py-12 text-center"><div class="flex flex-col items-center gap-2 opacity-60"><i data-lucide="users" class="size-10 text-secondary"></i><p class="text-secondary font-medium">No users found</p></div></td></tr>
                     @endforelse
+                </tbody>
+                <tbody wire:loading>
+                    @for($i = 0; $i < 6; $i++)
+                    <tr class="border-b border-border">
+                        <td class="px-4 py-3.5"><div class="flex items-center gap-3 animate-pulse"><div class="size-8 bg-muted rounded-full"></div><div class="h-4 bg-muted rounded w-28"></div></div></td>
+                        <td class="px-4 py-3.5"><div class="h-4 bg-muted rounded w-36 animate-pulse"></div></td>
+                        <td class="px-4 py-3.5"><div class="h-6 bg-muted rounded-lg w-16 animate-pulse"></div></td>
+                        <td class="px-4 py-3.5"><div class="h-4 bg-muted rounded w-20 animate-pulse"></div></td>
+                        <td class="px-4 py-3.5"><div class="h-4 bg-muted rounded w-16 animate-pulse"></div></td>
+                        <td class="px-4 py-3.5"><div class="flex gap-1"><div class="size-8 bg-muted rounded-lg"></div><div class="size-8 bg-muted rounded-lg"></div></div></td>
+                    </tr>
+                    @endfor
                 </tbody>
             </table>
         </div>

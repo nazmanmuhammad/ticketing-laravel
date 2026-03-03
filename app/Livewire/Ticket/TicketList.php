@@ -58,17 +58,10 @@ class TicketList extends Component
     public function render()
     {
         $user = auth()->user();
-        $teamIds = $user->teams()->pluck('teams.id')->toArray();
 
         $tickets = Ticket::with(['requester', 'assignee', 'category'])
-            ->when(!$user->canAny(['tickets.assign', 'tickets.edit', 'tickets.delete']), function ($q) use ($user, $teamIds) {
-                $q->where(function ($q2) use ($user, $teamIds) {
-                    $q2->where('requester_id', $user->id)
-                        ->orWhere('assigned_to', $user->id);
-                    if (!empty($teamIds)) {
-                        $q2->orWhereIn('assigned_team_id', $teamIds);
-                    }
-                });
+            ->when(!$user->canAny(['tickets.assign', 'tickets.edit', 'tickets.delete']), function ($q) use ($user) {
+                $q->where('requester_id', $user->id);
             })
             ->when($this->search, fn ($q) => $q->where(fn ($q2) => $q2->where('title', 'like', "%{$this->search}%")->orWhere('ticket_number', 'like', "%{$this->search}%")))
             ->when($this->statusFilter, fn ($q) => $q->where('status', $this->statusFilter))

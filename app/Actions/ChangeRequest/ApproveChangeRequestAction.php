@@ -6,6 +6,8 @@ use App\Models\ChangeRequest;
 use App\Models\ChangeRequestActivity;
 use App\Models\ChangeRequestApproval;
 use App\Models\User;
+use App\Mail\ApprovalRequestMail;
+use Illuminate\Support\Facades\Mail;
 
 class ApproveChangeRequestAction
 {
@@ -44,14 +46,41 @@ class ApproveChangeRequestAction
         ]);
 
         if ($action === 'approved') {
-            $pendingApprovals = $cr->approvals()->where('status', 'pending')->count();
-            if ($pendingApprovals === 0) {
-                $cr->update(['status' => 'approved']);
+            $pendingAtSameOrLower = $cr->approvals()
+                ->where('level', '<=', $approval->level)
+                ->where('status', 'pending')
+                ->count();
+
+            if ($pendingAtSameOrLower === 0) {
+                $nextLevelApprovals = $cr->approvals()
+                    ->where('level', '>', $approval->level)
+                    ->where('status', 'pending')
+                    ->get();
+
+                if ($nextLevelApprovals->isEmpty()) {
+                    $cr->update(['status' => 'approved']);
+                } else {
+                    $nextMinLevel = $nextLevelApprovals->min('level');
+                    $nextLevelOnly = $nextLevelApprovals->where('level', $nextMinLevel);
+                    foreach ($nextLevelOnly as $nextApproval) {
+                        $nextApproval->load('approver');
+                        if ($nextApproval->approver) {
+                            try {
+                                Mail::to($nextApproval->approver->email)->send(new ApprovalRequestMail(
+                                    $cr, 'change_request', $nextApproval->approver->name, $nextMinLevel,
+                                    route('change-requests.show', $cr)
+                                ));
+                            } catch (\Throwable $e) {
+                                \Log::warning('Failed to send CR approval email: ' . $e->getMessage());
+                            }
+                        }
+                    }
+                }
             }
         } elseif ($action === 'rejected') {
             $cr->update(['status' => 'rejected']);
         } elseif ($action === 'info_requested') {
-            $cr->update(['status' => 'under_review']);
+            $cr->update(['status' => 'info_requested']);
         } elseif ($action === 'rescheduled') {
             $cr->update(['status' => 'under_review']);
         }

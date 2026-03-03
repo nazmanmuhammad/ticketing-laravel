@@ -21,8 +21,8 @@ class AccessReport extends Component
     public function render()
     {
         $query = AccessRequest::query()
-            ->when($this->dateFrom, fn ($q) => $q->whereDate('created_at', '>=', $this->dateFrom))
-            ->when($this->dateTo, fn ($q) => $q->whereDate('created_at', '<=', $this->dateTo));
+            ->when($this->dateFrom, fn ($q) => $q->whereDate('access_requests.created_at', '>=', $this->dateFrom))
+            ->when($this->dateTo, fn ($q) => $q->whereDate('access_requests.created_at', '<=', $this->dateTo));
 
         $byStatus = (clone $query)->selectRaw('status as label, count(*) as total')->groupBy('status')->pluck('total', 'label')->toArray();
         $bySystem = (clone $query)->join('systems', 'access_requests.system_id', '=', 'systems.id')
